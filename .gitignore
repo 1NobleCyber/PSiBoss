@@ -1,4 +1,25 @@
+# PowerShell
+*.clixml
+*.format.ps1xml
+*.psd1.bak
+*.ps1.bak
+*.xml
+
+# Pester / Test Results
+TestResults/
+*.xml
+*.trx
+
+# Mac System Files
 .DS_Store
-*.pptm
-*.csv
-test-results/
+.AppleDouble
+.LSOverride
+
+# VS Code
+.vscode/
+
+# Project Specific
+*.pfx
+*.pem
+*.key
+local-secrets.json
