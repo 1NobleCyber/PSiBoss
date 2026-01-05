@@ -46,8 +46,15 @@ function Connect-iBoss {
              throw "Network Connection Failed: $($_.Exception.Message)"
         }
 
+        # ERROR HANDLING & MFA CHECK
         if ($WebResponse.StatusCode -ge 400) {
             Write-Warning "Login Failed with Status Code: $($WebResponse.StatusCode)"
+            
+            # Check for specific MFA requirement logic
+            if ($WebResponse.Content -match "MULTIFACTOR_CREDENTIALS_REQUIRED") {
+                throw "Login Failed: Multi-Factor Authentication is required for this account. Please run Connect-iBoss again using the -TOTP parameter."
+            }
+
             if ($WebResponse.Content) { throw "iBoss returned error: $($WebResponse.Content)" }
             throw "Login failed (Status $($WebResponse.StatusCode))"
         }
@@ -62,14 +69,11 @@ function Connect-iBoss {
         $XsrfToken = $null
         
         if ($WebResponse.Headers['Set-Cookie']) {
-            # Combine all cookies into one string for future headers
             $CookieArray = $WebResponse.Headers['Set-Cookie']
             if ($CookieArray -is [string]) { $CookieArray = @($CookieArray) }
             
-            # Store raw string for the 'Cookie' header
             $CookieString = ($CookieArray -join ';')
             
-            # Extract XSRF Token specifically for the 'X-XSRF-TOKEN' header
             foreach ($Cookie in $CookieArray) {
                 if ($Cookie -match 'XSRF-TOKEN=([^;]+)') {
                     $XsrfToken = $matches[1]
@@ -77,11 +81,11 @@ function Connect-iBoss {
             }
         }
 
-        # Initialize Session with new Cookie data
+        # Initialize Session
         $Global:iBossSession = @{
             AuthToken = $FormattedToken
-            Cookies   = $CookieString # The full "Key=Value; Key=Value" string
-            XsrfToken = $XsrfToken    # The specific value for the header
+            Cookies   = $CookieString
+            XsrfToken = $XsrfToken
             Domains   = @{}
             Context   = @{}
         }
