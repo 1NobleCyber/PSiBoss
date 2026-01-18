@@ -13,7 +13,7 @@ function Connect-iBoss {
     )
 
     process {
-        # LOGIN - Get Token & Cookies
+        # --- STEP 1: LOGIN (Get Token & Cookies) ---
         $LoginUri = "/ibossauth/web/tokens?ignoreAuthModule=true"
         if (![string]::IsNullOrWhiteSpace($TOTP)) {
             $LoginUri += "&totpCode=$TOTP"
@@ -21,7 +21,7 @@ function Connect-iBoss {
         
         $FullLoginUrl = "https://accounts.iboss.com$LoginUri"
 
-        # Generate Basic Auth
+        # Generate Basic Auth (ISO-8859-1)
         $PlainAuth = "$($Credential.UserName):$($Credential.GetNetworkCredential().Password)"
         $Bytes = [System.Text.Encoding]::GetEncoding("ISO-8859-1").GetBytes($PlainAuth)
         $BasicAuth = [Convert]::ToBase64String($Bytes)
@@ -46,25 +46,22 @@ function Connect-iBoss {
              throw "Network Connection Failed: $($_.Exception.Message)"
         }
 
-        # ERROR HANDLING & MFA CHECK
+        # --- ERROR HANDLING & MFA CHECK ---
         if ($WebResponse.StatusCode -ge 400) {
             Write-Warning "Login Failed with Status Code: $($WebResponse.StatusCode)"
-            
-            # Check for specific MFA requirement logic
             if ($WebResponse.Content -match "MULTIFACTOR_CREDENTIALS_REQUIRED") {
-                throw "Login Failed: Multi-Factor Authentication is required for this account. Please run Connect-iBoss again using the -TOTP parameter."
+                throw "Login Failed: Multi-Factor Authentication is required. Please run Connect-iBoss with -TOTP."
             }
-
             if ($WebResponse.Content) { throw "iBoss returned error: $($WebResponse.Content)" }
             throw "Login failed (Status $($WebResponse.StatusCode))"
         }
 
-        # PARSE TOKEN
+        # --- PARSE TOKEN ---
         $TokenObj = $WebResponse.Content | ConvertFrom-Json
         $RawToken = if ($TokenObj.token) { $TokenObj.token } else { $TokenObj }
         $FormattedToken = "Token $RawToken"
 
-        # PARSE COOKIES - Capture XSRF-TOKEN and JSESSIONID
+        # --- PARSE COOKIES ---
         $CookieString = ""
         $XsrfToken = $null
         
@@ -73,7 +70,6 @@ function Connect-iBoss {
             if ($CookieArray -is [string]) { $CookieArray = @($CookieArray) }
             
             $CookieString = ($CookieArray -join ';')
-            
             foreach ($Cookie in $CookieArray) {
                 if ($Cookie -match 'XSRF-TOKEN=([^;]+)') {
                     $XsrfToken = $matches[1]
@@ -91,30 +87,54 @@ function Connect-iBoss {
         }
 
         Write-Verbose "Auth Token and Cookies acquired."
-        if ($XsrfToken) { Write-Verbose "XSRF Token detected." }
 
-        # GET CONTEXT & DOMAINS
-        Write-Verbose "Step 2: Retrieving Account Context and Nodes..."
-        
+        # --- STEP 2: GET ACCOUNT CONTEXT ---
+        Write-Verbose "Step 2: Retrieving Account Context..."
         try {
             $MySettings = Invoke-iBossRequest -Service Core -Uri "/ibcloud/web/users/mySettings" -Verbose:$VerbosePreference -ErrorAction Stop
         }
         catch {
             throw "Failed at Step 2 (Get Account Context). Error: $_"
         }
-        
         $Global:iBossSession.Context = $MySettings
         
-        if ($MySettings.defaultNodeCluster -and $MySettings.defaultNodeCluster.clusterFullDns) {
-            $ClusterDns = $MySettings.defaultNodeCluster.clusterFullDns
-            $Global:iBossSession.Domains['Gateway']   = "https://$ClusterDns"
-            $Global:iBossSession.Domains['Reporting'] = "https://$ClusterDns"
+        # Get Account ID
+        $AccId = $MySettings.accountSettingsId
+        if (-not $AccId) { $AccId = $MySettings.id }
+
+        # --- STEP 3: GET CLOUD NODES (Updated Logic) ---
+        Write-Verbose "Step 3: Discovering Primary Gateway via Cloud Nodes..."
+        
+        try {
+            # We use the Core service to hit api.ibosscloud.com/ibcloud/web/cloudNodes
+            $CloudNodes = Invoke-iBossRequest -Service Core -Uri "/ibcloud/web/cloudNodes?accountSettingsId=$AccId" -Verbose:$VerbosePreference -ErrorAction Stop
         }
-        else {
-            throw "Could not find 'defaultNodeCluster.clusterFullDns' in the Account Context."
+        catch {
+            throw "Failed at Step 3 (Get Cloud Nodes). Error: $_"
         }
 
+        # Filter: Find the object where "primaryNode" equals 1
+        $NodesArray = @($CloudNodes) # Ensure it's an array even if 1 result
+        $PrimaryNode = $NodesArray | Where-Object { $_.primaryNode -eq 1 } | Select-Object -First 1
+
+        if (-not $PrimaryNode) {
+             # Fallback safety: If no explicit primary is marked, grab the first one that has a DNS name
+             Write-Warning "No node marked as 'primaryNode=1' found. Using first available node with a DNS entry."
+             $PrimaryNode = $NodesArray | Where-Object { $_.masterAdminInterfaceDns } | Select-Object -First 1
+        }
+
+        if ($PrimaryNode -and $PrimaryNode.masterAdminInterfaceDns) {
+             $GatewayDns = $PrimaryNode.masterAdminInterfaceDns
+        }
+        else {
+             throw "Could not identify a Primary Gateway DNS (looking for property 'masterAdminInterfaceDns')."
+        }
+
+        # Save to Session
+        $Global:iBossSession.Domains['Gateway']   = "https://$GatewayDns"
+        $Global:iBossSession.Domains['Reporting'] = "https://$GatewayDns" 
+
         Write-Host "Connected to iBoss Cloud Gateway!" -ForegroundColor Green
-        Write-Verbose "Gateway Node:   $($Global:iBossSession.Domains.Gateway)"
+        Write-Verbose "Primary Node Detected: $GatewayDns"
     }
 }
