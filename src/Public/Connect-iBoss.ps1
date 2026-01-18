@@ -9,7 +9,11 @@ function Connect-iBoss {
         [PSCredential]$Credential,
 
         [Parameter(Mandatory = $false)]
-        [string]$TOTP
+        [string]$TOTP,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NoWelcome
+
     )
 
     process {
@@ -35,15 +39,15 @@ function Connect-iBoss {
             $WebResponse = Invoke-WebRequest -Uri $FullLoginUrl `
                 -Method GET `
                 -Headers @{ 
-                    "Authorization" = "Basic $BasicAuth"
-                    "User-Agent"    = "ibossAPI"
-                    "Accept"        = "application/json"
-                } `
+                "Authorization" = "Basic $BasicAuth"
+                "User-Agent"    = "ibossAPI"
+                "Accept"        = "application/json"
+            } `
                 -SkipHttpErrorCheck `
                 -ErrorAction Stop
         }
         catch {
-             throw "Network Connection Failed: $($_.Exception.Message)"
+            throw "Network Connection Failed: $($_.Exception.Message)"
         }
 
         # --- ERROR HANDLING & MFA CHECK ---
@@ -118,23 +122,26 @@ function Connect-iBoss {
         $PrimaryNode = $NodesArray | Where-Object { $_.primaryNode -eq 1 } | Select-Object -First 1
 
         if (-not $PrimaryNode) {
-             # Fallback safety: If no explicit primary is marked, grab the first one that has a DNS name
-             Write-Warning "No node marked as 'primaryNode=1' found. Using first available node with a DNS entry."
-             $PrimaryNode = $NodesArray | Where-Object { $_.masterAdminInterfaceDns } | Select-Object -First 1
+            # Fallback safety: If no explicit primary is marked, grab the first one that has a DNS name
+            Write-Warning "No node marked as 'primaryNode=1' found. Using first available node with a DNS entry."
+            $PrimaryNode = $NodesArray | Where-Object { $_.masterAdminInterfaceDns } | Select-Object -First 1
         }
 
         if ($PrimaryNode -and $PrimaryNode.masterAdminInterfaceDns) {
-             $GatewayDns = $PrimaryNode.masterAdminInterfaceDns
+            $GatewayDns = $PrimaryNode.masterAdminInterfaceDns
         }
         else {
-             throw "Could not identify a Primary Gateway DNS (looking for property 'masterAdminInterfaceDns')."
+            throw "Could not identify a Primary Gateway DNS (looking for property 'masterAdminInterfaceDns')."
         }
 
         # Save to Session
-        $Global:iBossSession.Domains['Gateway']   = "https://$GatewayDns"
+        $Global:iBossSession.Domains['Gateway'] = "https://$GatewayDns"
         $Global:iBossSession.Domains['Reporting'] = "https://$GatewayDns" 
 
-        Write-Host "Connected to iBoss Cloud Gateway!" -ForegroundColor Green
+        if (-not $NoWelcome) {
+            Write-Host "Connected to iBoss Cloud Gateway!" -ForegroundColor Green
+        }
+
         Write-Verbose "Primary Node Detected: $GatewayDns"
     }
 }
