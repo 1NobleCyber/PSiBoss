@@ -39,6 +39,9 @@ function Add-iBossAllowList {
         Default: 0
     .PARAMETER UrlFieldType
         Default: 0
+    .PARAMETER ApplyKeywordAndSafeSearch
+        Default: 0
+
     #>
     [CmdletBinding()]
     param(
@@ -60,31 +63,35 @@ function Add-iBossAllowList {
         [int]$DoFileChecks = 1,
         [int]$OverrideZeroTrust = 0,
         [int]$SslBypass = 0,
-        [int]$UrlFieldType = 0
+        [int]$UrlFieldType = 0,
+        [int]$ApplyKeywordAndSafeSearch = 0
+
     )
 
     process {
         $Uri = "/json/controls/allowList?currentPolicyBeingEdited=$PolicyId"
 
         $Payload = @{
-            global                   = $Global
-            isRegex                  = $IsRegex
-            allowKeyword             = $AllowKeyword
-            direction                = $Direction
-            priority                 = $Priority
-            timedUrl                 = $TimedUrl
-            currentPolicyBeingEdited = $PolicyId
-            startPort                = $StartPort
-            endPort                  = $EndPort
-            doMalwareScan            = $DoMalwareScan
-            doDlpScan                = $DoDlpScan
-            doFileChecks             = $DoFileChecks
-            overrideZeroTrust        = $OverrideZeroTrust
-            sslBypass                = $SslBypass
-            urlFieldType             = $UrlFieldType
-            url                      = $Url
-            note                     = $Note
-            weight                   = $Weight
+            global                    = $Global
+            isRegex                   = $IsRegex
+            allowKeyword              = $AllowKeyword
+            direction                 = $Direction
+            priority                  = $Priority
+            timedUrl                  = $TimedUrl
+            currentPolicyBeingEdited  = $PolicyId
+            startPort                 = $StartPort
+            endPort                   = $EndPort
+            doMalwareScan             = $DoMalwareScan
+            doDlpScan                 = $DoDlpScan
+            doFileChecks              = $DoFileChecks
+            overrideZeroTrust         = $OverrideZeroTrust
+            sslBypass                 = $SslBypass
+            urlFieldType              = $UrlFieldType
+            applyKeywordAndSafeSearch = $ApplyKeywordAndSafeSearch
+
+            url                       = $Url
+            note                      = $Note
+            weight                    = $Weight
         }
 
         if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
