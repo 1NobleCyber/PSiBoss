@@ -93,7 +93,6 @@ function Add-iBossAllowList {
 
             url                       = $Url
             note                      = $Note
-            weight                    = $Weight
         }
 
         if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
