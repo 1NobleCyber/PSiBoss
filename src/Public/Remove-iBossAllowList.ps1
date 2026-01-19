@@ -52,7 +52,14 @@ function Remove-iBossAllowList {
             Write-Verbose "Payload: $($Payload | ConvertTo-Json -Compress)"
         }
 
-        return Invoke-iBossRequest -Service Gateway -Uri $Uri -Method DELETE -Body $Payload
+        $Response = Invoke-iBossRequest -Service Gateway -Uri $Uri -Method DELETE -Body $Payload
+        
+        if ($Response -and $Response -is [System.Management.Automation.PSCustomObject]) {
+            $Response | Add-Member -MemberType NoteProperty -Name "url" -Value $Url -Force
+        }
+
+        return $Response
+
     }
 
 }
