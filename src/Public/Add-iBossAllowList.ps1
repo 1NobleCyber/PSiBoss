@@ -48,7 +48,8 @@ function Add-iBossAllowList {
         [Parameter(Mandatory, ValueFromPipeline)]
         [string]$Url,
         [string]$Note = "",
-        [int]$Weight = 501,
+        [int]$Weight,
+
         [int]$PolicyId = 1,
         [int]$Global = 0,
         [int]$IsRegex = 0,
@@ -69,7 +70,32 @@ function Add-iBossAllowList {
     )
 
     process {
+        if (-not $PSBoundParameters.ContainsKey('Weight')) {
+            # Split on the first '/'
+            $Parts = $Url.Split(@('/'), 2, [System.StringSplitOptions]::None)
+            
+            # Split the first value by '.'
+            $DomainParts = $Parts[0].Split('.')
+            
+            # Split the second value by '/'
+            $PathParts = @()
+            if ($Parts.Count -gt 1) {
+                $PathParts = $Parts[1].Split('/')
+            }
+            
+            # Count the total number of elements
+            $Count = $DomainParts.Count + $PathParts.Count
+            
+            # Add this to 499
+            $Weight = 499 + $Count
+            
+            if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
+                Write-Verbose "Calculated Weight based on URL complexity: $Weight (Parts: $Count)"
+            }
+        }
+
         $Uri = "/json/controls/allowList?currentPolicyBeingEdited=$PolicyId"
+
 
         $Payload = @{
             global                    = $Global
