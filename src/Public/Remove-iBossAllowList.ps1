@@ -6,25 +6,49 @@ function Remove-iBossAllowList {
         The domain or URL to remove.
     .PARAMETER PolicyId
         The policy ID to target. Default is 1.
+    .PARAMETER Direction
+        Mandatory
+    .PARAMETER StartPort
+        Default: 0
+    .PARAMETER EndPort
+        Default: 0
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory, ValueFromPipeline)]
         [string]$Url,
 
-        [int]$PolicyId = 1
+        [int]$PolicyId = 1,
+        
+        [Parameter(Mandatory)]
+        [int]$Direction,
+
+        [Nullable[int]]$StartPort,
+        [Nullable[int]]$EndPort
     )
 
+
     process {
-        # Escape the URL parameter
-        $EncodedUrl = [uri]::EscapeDataString($Url)
-        
-        $Uri = "/json/controls/allowList?currentPolicyBeingEdited=$PolicyId&url=$EncodedUrl"
+        # Logic for null ports
+        if (-not $StartPort) { $StartPort = 0 }
+        if (-not $EndPort) { $EndPort = 0 }
+
+        $Uri = "/json/controls/allowList?currentPolicyBeingEdited=$PolicyId"
+
+        $Payload = @{
+            currentPolicyBeingEdited = $PolicyId
+            startPort                = $StartPort
+            endPort                  = $EndPort
+            direction                = $Direction
+            url                      = $Url
+        }
 
         if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
             Write-Verbose "Removing Allow List Entry: $Url"
+            Write-Verbose "Payload: $($Payload | ConvertTo-Json -Compress)"
         }
 
-        return Invoke-iBossRequest -Service Gateway -Uri $Uri -Method DELETE
+        return Invoke-iBossRequest -Service Gateway -Uri $Uri -Method DELETE -Body $Payload
     }
+
 }
