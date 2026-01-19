@@ -15,16 +15,20 @@ function Remove-iBossAllowList {
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory, ValueFromPipeline)]
+        [Parameter(Mandatory, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [string]$Url,
 
+        [Parameter(ValueFromPipelineByPropertyName)]
         [int]$PolicyId = 1,
         
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, ValueFromPipelineByPropertyName)]
         [int]$Direction,
 
+        [Parameter(ValueFromPipelineByPropertyName)]
         [Nullable[int]]$StartPort,
+        [Parameter(ValueFromPipelineByPropertyName)]
         [Nullable[int]]$EndPort
+
     )
 
 
