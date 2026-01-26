@@ -117,6 +117,9 @@ function Connect-iBoss {
             throw "Failed at Step 3 (Get Cloud Nodes). Error: $_"
         }
 
+        # Save CloudNodes to Session for reference
+        $Global:iBossSession.CloudNodes = $CloudNodes
+
         # Filter: Find the object where "primaryNode" equals 1
         $NodesArray = @($CloudNodes) # Ensure it's an array even if 1 result
         $PrimaryNode = $NodesArray | Where-Object { $_.primaryNode -eq 1 } | Select-Object -First 1
@@ -139,8 +142,26 @@ function Connect-iBoss {
 
         # Save to Session
         $Global:iBossSession.Domains['Gateway'] = "https://$GatewayDns"
-        $Global:iBossSession.Domains['Reporting'] = "https://$GatewayDns"
         $Global:iBossSession.GatewayVersion = $GatewayVersion
+
+        # --- DETECT REPORTING NODE ---
+        $ReportingNodeObj = $null
+        
+        # 1. Check for explicit Reporting Node in CloudNodes
+        $ReportingNodeObj = $NodesArray | Where-Object { 
+            ($_.productFamily -eq 'reports') -or ($_.description -eq 'Reporter') 
+        } | Select-Object -First 1
+
+        if ($ReportingNodeObj) {
+            $ReportingDns = $ReportingNodeObj.masterAdminInterfaceDns
+            Write-Verbose "Reporting Node Detected (via productFamily='reports'): $ReportingDns"
+            $Global:iBossSession.Domains['Reporting'] = "https://$ReportingDns"
+        }
+        else {
+            # 2. Fallback: Use Primary Gateway if no dedicated reporter found
+            Write-Verbose "No dedicated Reporting Node found. Using Primary Gateway for reporting."
+            $Global:iBossSession.Domains['Reporting'] = "https://$GatewayDns"
+        }
 
 
         # --- STEP 4: FETCH WEB CATEGORIES ---
