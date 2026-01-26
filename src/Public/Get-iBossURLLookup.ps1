@@ -33,11 +33,6 @@ function Get-iBossURLLookup {
 
         $Response = Invoke-iBossRequest -Service Gateway -Uri $Uri -Method POST -Body $Payload
         
-        # Remove the 'categories' bitmask if present
-        if ($Response -and $Response.PSObject.Properties.Match('categories')) {
-            $Response.PSObject.Properties.Remove('categories')
-        }
-
         return $Response
     }
 }
