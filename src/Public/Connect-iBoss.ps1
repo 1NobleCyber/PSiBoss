@@ -130,6 +130,7 @@ function Connect-iBoss {
         if ($PrimaryNode -and $PrimaryNode.masterAdminInterfaceDns) {
             $GatewayDns = $PrimaryNode.masterAdminInterfaceDns
             $GatewayVersion = $PrimaryNode.currentFirmwareVersion
+            $SwgUrl = $PrimaryNode.publicUrl
         }
 
         else {
@@ -140,6 +141,39 @@ function Connect-iBoss {
         $Global:iBossSession.Domains['Gateway'] = "https://$GatewayDns"
         $Global:iBossSession.Domains['Reporting'] = "https://$GatewayDns"
         $Global:iBossSession.GatewayVersion = $GatewayVersion
+
+
+        # --- STEP 4: FETCH WEB CATEGORIES ---
+        if ($SwgUrl) {
+            if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
+                Write-Verbose "Step 4: Fetching Web Categories from $SwgUrl..."
+            }
+            
+            $CatUri = "${SwgUrl}common/lookup/mainWebCategories.json?tcm=$GatewayVersion"
+            
+            # Reconstruct headers for this request
+            $CatHeaders = @{
+                "Authorization" = $FormattedToken
+                "User-Agent"    = "ibossAPI"
+                "Content-Type"  = "application/json;charset=UTF-8"
+            }
+            if ($CookieString) { $CatHeaders['Cookie'] = $CookieString }
+            if ($XsrfToken) { $CatHeaders['X-XSRF-TOKEN'] = $XsrfToken }
+
+            try {
+                $CatResponse = Invoke-RestMethod -Uri $CatUri -Method GET -Headers $CatHeaders -ErrorAction Stop
+                
+                # Store simple objects (id, defaultText)
+                $Global:iBossSession.WebCategories = $CatResponse | Select-Object id, defaultText
+                
+                if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
+                    Write-Verbose "Retrieved $($Global:iBossSession.WebCategories.Count) Web Categories."
+                }
+            }
+            catch {
+                Write-Warning "Failed to fetch Web Categories: $_"
+            }
+        }
 
         if (-not $NoWelcome) {
             Write-Host "Connected to iBoss Cloud Gateway!" -ForegroundColor Green
