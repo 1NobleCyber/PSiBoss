@@ -24,5 +24,4 @@ TestResults/
 *.key
 local-secrets.json
 Docs/
-
 verify_all.ps1
