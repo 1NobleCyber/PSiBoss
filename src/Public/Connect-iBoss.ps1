@@ -129,14 +129,17 @@ function Connect-iBoss {
 
         if ($PrimaryNode -and $PrimaryNode.masterAdminInterfaceDns) {
             $GatewayDns = $PrimaryNode.masterAdminInterfaceDns
+            $GatewayVersion = $PrimaryNode.currentFirmwareVersion
         }
+
         else {
             throw "Could not identify a Primary Gateway DNS (looking for property 'masterAdminInterfaceDns')."
         }
 
         # Save to Session
         $Global:iBossSession.Domains['Gateway'] = "https://$GatewayDns"
-        $Global:iBossSession.Domains['Reporting'] = "https://$GatewayDns" 
+        $Global:iBossSession.Domains['Reporting'] = "https://$GatewayDns"
+        $Global:iBossSession.GatewayVersion = $GatewayVersion
 
         if (-not $NoWelcome) {
             Write-Host "Connected to iBoss Cloud Gateway!" -ForegroundColor Green
