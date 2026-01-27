@@ -110,7 +110,6 @@ function Connect-iBoss {
         Write-Verbose "Step 3: Discovering Primary Gateway via Cloud Nodes..."
         
         try {
-            # We use the Core service to hit api.ibosscloud.com/ibcloud/web/cloudNodes
             $CloudNodes = Invoke-iBossRequest -Service Core -Uri "/ibcloud/web/cloudNodes?accountSettingsId=$AccId" -Verbose:$VerbosePreference -ErrorAction Stop
         }
         catch {
@@ -125,7 +124,6 @@ function Connect-iBoss {
         $PrimaryNode = $NodesArray | Where-Object { $_.primaryNode -eq 1 } | Select-Object -First 1
 
         if (-not $PrimaryNode) {
-            # Fallback safety: If no explicit primary is marked, grab the first one that has a DNS name
             Write-Warning "No node marked as 'primaryNode=1' found. Using first available node with a DNS entry."
             $PrimaryNode = $NodesArray | Where-Object { $_.masterAdminInterfaceDns } | Select-Object -First 1
         }
