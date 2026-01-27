@@ -29,6 +29,10 @@ function Get-iBossLogEntry {
         The base log type name (e.g. 'url_log_entry'). 
         The actual table name queried will be suffix-appended with the date (e.g. url_log_entry_01262026).
     
+    .PARAMETER EventLogType
+        Specifies the type of log entry to retrieve. 
+        Valid values: 'All', 'Access', 'UserActivity', 'ConnectionError', 'Search', 'ZTNA', 'SDWAN', 'DNS', 'ConnectorRegistration', 'ZTNAPeerRegistration', 'SoftOverride', 'Audit'.
+
 
         
     .EXAMPLE
@@ -55,7 +59,12 @@ function Get-iBossLogEntry {
         [int]$Limit = 100,
 
         [Parameter(Mandatory = $false)]
-        [string]$LogType = "url_log_entry"
+        [string]$LogType = "url_log_entry",
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('All', 'Access', 'UserActivity', 'ConnectionError', 'Search', 'ZTNA', 'SDWAN', 'DNS', 'ConnectorRegistration', 'ZTNAPeerRegistration', 'SoftOverride', 'Audit')]
+        [string]$EventLogType = 'All'
+
     )
 
     process {
@@ -74,12 +83,28 @@ function Get-iBossLogEntry {
         
         Write-Verbose "Calculated TableName: $TableName"
 
-        # 4. Build Query Parameters
+        # 4. Map EventLogType to Query Parameters
+        $TypeSettings = switch ($EventLogType) {
+            'All' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+            'Access' { @{ statusRecordType = '0'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+            'UserActivity' { @{ statusRecordType = '1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+            'ConnectionError' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '1'; callout = '-1'; statusRecord = '-1' } }
+            'Search' { @{ statusRecordType = '2'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+            'ZTNA' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '2' } }
+            'SDWAN' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '1'; statusRecord = '-1' } }
+            'DNS' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '2'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+            'ConnectorRegistration' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '3'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+            'ZTNAPeerRegistration' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '4'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+            'SoftOverride' { @{ statusRecordType = '3'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+            'Audit' { @{ statusRecordType = '-1'; auditRecord = '0'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+        }
+
+        # 5. Build Query Parameters
         $QueryParams = @{
             action                = ""
             addTag                = "true"
-            auditRecord           = "-1"
-            callout               = "-1"
+            auditRecord           = $TypeSettings['auditRecord']
+            callout               = $TypeSettings['callout']
             caseInsensitive       = "false"
             categoryId            = "1000000" 
             currentLogEntryId     = "-1"
@@ -92,13 +117,13 @@ function Get-iBossLogEntry {
             includeAllRecord      = "true"
             includeLogReports     = "true"
             isAdvancedSearch      = "true"
-            isProxyError          = "-1"
+            isProxyError          = $TypeSettings['isProxyError']
             locale                = "en_US"
             localizeLogTime       = "true"
             logReductionType      = "0"
             maxItemsToReturn      = $Limit
             mitm                  = "-1"
-            noiseFilter           = "-1"
+            noiseFilter           = $TypeSettings['noiseFilter']
             orderAscending        = "false"
             priority              = "-1"
             proxyErrorWildcard    = "true"
@@ -107,8 +132,8 @@ function Get-iBossLogEntry {
             searchRiskType        = "-1"
             sortByCriteria        = "SORT_BY_ID"
             startTimeMillies      = $StartEpoch
-            statusRecord          = "-1"
-            statusRecordType      = "-1"
+            statusRecord          = $TypeSettings['statusRecord']
+            statusRecordType      = $TypeSettings['statusRecordType']
             swgGateway            = "all"
             tableName             = $TableName
             tlsVersion            = "" 
