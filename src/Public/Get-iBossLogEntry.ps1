@@ -36,7 +36,7 @@ function Get-iBossLogEntry {
 
         
     .EXAMPLE
-        Get-iBossLogEntry -StartTime (Get-Date).AddMinutes(-30) -UserName "student1"
+        Get-iBossLogEntry -StartTime (Get-Date).AddMinutes(-30) -UserName "Jane.Doe1"
     #>
     [CmdletBinding()]
     param(
