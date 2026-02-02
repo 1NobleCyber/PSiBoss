@@ -77,11 +77,42 @@ function Get-iBossLogEntry {
         $StartEpoch = [int64](($StartTime.ToUniversalTime() - [DateTime]::Parse("1970-01-01")).TotalMilliseconds)
         $EndEpoch = [int64](($EndTime.ToUniversalTime() - [DateTime]::Parse("1970-01-01")).TotalMilliseconds)
 
-        # 3. Calculate Table Name
-        $DateSuffix = $StartTime.ToString("MMddyyyy")
-        $TableName = "${LogType}_${DateSuffix}"
+        # 3. Get and Filter Tables
+        Write-Verbose "Retrieving available log tables..."
         
-        Write-Verbose "Calculated TableName: $TableName"
+        # Determine LogFamily from LogType (e.g. url_log_entry -> url, ips_log -> ips)
+        $LogFamily = $LogType.Split('_')[0]
+        if ($LogFamily -notin @('url', 'ips', 'el')) {
+            Write-Verbose "Could not determine standard LogFamily from '$LogType'. Defaulting to 'url'."
+            $LogFamily = 'url'
+        }
+
+        $AllTables = Get-iBossLogTables -LogFamily $LogFamily
+
+        # Filter tables that match the LogType and overlap with the time range
+        $TargetTables = $AllTables | Where-Object {
+            $TableLogType = $_.displayString -replace '_\d{8}$', '' # Remove date suffix to get type
+            
+            # 1. Match Log Type (exact match of prefix)
+            $TypeMatch = $TableLogType -eq $LogType
+
+            # 2. Check Time Overlap
+            # Table End Time (if null, use current time)
+            $TableEnd = if ($_.endDate) { $_.endDate } else { [DateTimeOffset]::Now.ToUnixTimeMilliseconds() }
+            $TableStart = $_.startDate
+
+            # Overlap: (StartA <= EndB) and (EndA >= StartB)
+            $TimeMatch = ($StartEpoch -le $TableEnd) -and ($EndEpoch -ge $TableStart)
+
+            $TypeMatch -and $TimeMatch
+        }
+
+        if (-not $TargetTables) {
+            Write-Warning "No log tables found for LogType '$LogType' in the specified time range."
+            return
+        }
+
+        Write-Verbose "Found $($TargetTables.Count) matching table(s): $($TargetTables.tableName -join ', ')"
 
         # 4. Map EventLogType to Query Parameters
         $TypeSettings = switch ($EventLogType) {
@@ -99,8 +130,8 @@ function Get-iBossLogEntry {
             'Audit' { @{ statusRecordType = '-1'; auditRecord = '0'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
         }
 
-        # 5. Build Query Parameters
-        $QueryParams = @{
+        # 5. Build Base Query Parameters
+        $BaseQueryParams = @{
             action                = ""
             addTag                = "true"
             auditRecord           = $TypeSettings['auditRecord']
@@ -135,7 +166,7 @@ function Get-iBossLogEntry {
             statusRecord          = $TypeSettings['statusRecord']
             statusRecordType      = $TypeSettings['statusRecordType']
             swgGateway            = "all"
-            tableName             = $TableName
+            # tableName             = $TableName (Will be set in loop)
             tlsVersion            = "" 
             url                   = ""
             urlFilter             = "" 
@@ -144,26 +175,47 @@ function Get-iBossLogEntry {
 
         # Apply Optional Filters
         if (-not [string]::IsNullOrWhiteSpace($Filter)) {
-            $QueryParams['urlFilter'] = $Filter
+            $BaseQueryParams['urlFilter'] = $Filter
         }
         
         if (-not [string]::IsNullOrWhiteSpace($UserName)) {
-            $QueryParams['username'] = $UserName
+            $BaseQueryParams['username'] = $UserName
         }
 
         if (-not [string]::IsNullOrWhiteSpace($SourceIp)) {
-            $QueryParams['sourceIp'] = $SourceIp
+            $BaseQueryParams['sourceIp'] = $SourceIp
         }
-        
-        # Construct Query String
-        $QueryString = ($QueryParams.Keys | ForEach-Object { 
-                "$($_)=$([Uri]::EscapeDataString($QueryParams[$_]))" 
-            }) -join "&"
 
-        $Uri = "/ibreports/web/log/url/entries?$QueryString"
-        
-        $Result = Invoke-iBossRequest -Service Reporting -Uri $Uri -Verbose:$VerbosePreference
+        # 6. Execute Queries for Each Table
+        $AllResults = @()
 
-        return $Result
+        foreach ($Table in $TargetTables) {
+            Write-Verbose "Querying table: $($Table.tableName)"
+            
+            # Clone params for this iteration
+            $QueryParams = $BaseQueryParams.Clone()
+            $QueryParams['tableName'] = $Table.tableName
+
+            # Construct Query String
+            $QueryString = ($QueryParams.Keys | ForEach-Object { 
+                    "$($_)=$([Uri]::EscapeDataString($QueryParams[$_]))" 
+                }) -join "&"
+
+            $Uri = "/ibreports/web/log/url/entries?$QueryString"
+            
+            try {
+                $Result = Invoke-iBossRequest -Service Reporting -Uri $Uri -Verbose:$VerbosePreference
+                if ($Result) {
+                    # Some APIs return the array directly, others wrap it. 
+                    # Assuming array of entries based on previous logic.
+                    $AllResults += $Result
+                }
+            }
+            catch {
+                Write-Warning "Failed to query table $($Table.tableName): $_"
+            }
+        }
+
+        return $AllResults
     }
 }
