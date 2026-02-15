@@ -30,6 +30,9 @@ function Get-iBossLogEntry {
 
     .PARAMETER Action
         Filter logs by Action (e.g. Allowed, Blocked).
+
+    .PARAMETER GroupName
+        Filter logs by Group Name. Spaces are automatically replaced with +.
     
     .PARAMETER Limit
         The maximum number of items to return. Default is 100.
@@ -41,7 +44,6 @@ function Get-iBossLogEntry {
     .PARAMETER EventLogType
         Specifies the type of log entry to retrieve. 
         Valid values: 'All', 'Access', 'UserActivity', 'ConnectionError', 'Search', 'ZTNA', 'SDWAN', 'DNS', 'ConnectorRegistration', 'ZTNAPeerRegistration', 'SoftOverride', 'Audit'.
-
 
         
     .EXAMPLE
@@ -69,6 +71,9 @@ function Get-iBossLogEntry {
 
         [Parameter(Mandatory = $false)]
         [string]$DeviceName,
+
+        [Parameter(Mandatory = $false)]
+        [string]$GroupName,
 
         [Parameter(Mandatory = $false)]
         [ValidateSet('All', 'Allowed', 'Blocked', 'RBIRedirect', 'SoftBlocked', 'ConnectRequest')]
@@ -223,6 +228,11 @@ function Get-iBossLogEntry {
 
         if (-not [string]::IsNullOrWhiteSpace($DeviceName)) {
             $BaseQueryParams['machineName'] = $DeviceName
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($GroupName)) {
+            # Replace spaces with +
+            $BaseQueryParams['groupName'] = $GroupName -replace ' ', '+'
         }
 
         # 6. Execute Queries for Each Table
