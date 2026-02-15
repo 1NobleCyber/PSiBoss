@@ -54,6 +54,12 @@ function Get-iBossLogEntry {
     .PARAMETER Locale
         The locale to use for date formatting and localization. Default is 'en_US'.
 
+    .PARAMETER ZeroTrustPolicyName
+        Filter logs by Zero Trust Policy Name.
+
+    .PARAMETER ClientApplication
+        Filter logs by Client Application Name (e.g. *\brave.exe).
+
     .EXAMPLE
         Get-iBossLogEntry -StartTime (Get-Date).AddMinutes(-30) -UserName "Jane.Doe1"
     #>
@@ -104,7 +110,13 @@ function Get-iBossLogEntry {
         [string]$EventLogType = 'All',
 
         [Parameter(Mandatory = $false)]
-        [string]$Locale = 'en_US'
+        [string]$Locale = 'en_US',
+
+        [Parameter(Mandatory = $false)]
+        [string]$ZeroTrustPolicyName,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ClientApplication
 
     )
 
@@ -149,7 +161,7 @@ function Get-iBossLogEntry {
 
             if ($MatchingTable) {
                 Write-Verbose "StartTime not provided. Defaulting to start of table: $($MatchingTable.tableName)"
-                $StartEpoch = $MatchingTable.startDate
+                $StartEpoch = $($MatchingTable.startDate) + 1
             }
             else {
                 Write-Warning "Could not find a log table covering the EndTime. Defaulting StartTime to 1 hour before EndTime."
@@ -270,6 +282,14 @@ function Get-iBossLogEntry {
             $BaseQueryParams['destinationIp'] = $DestinationIp
         }
 
+        if (-not [string]::IsNullOrWhiteSpace($ZeroTrustPolicyName)) {
+            $BaseQueryParams['zeroTrustPolicyName'] = $ZeroTrustPolicyName
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($ClientApplication)) {
+            $BaseQueryParams['applicationName'] = $ClientApplication
+        }
+
         if (-not [string]::IsNullOrWhiteSpace($DeviceName)) {
             $BaseQueryParams['machineName'] = $DeviceName
         }
@@ -308,7 +328,18 @@ function Get-iBossLogEntry {
 
             # Construct Query String
             $QueryString = ($QueryParams.Keys | ForEach-Object { 
-                    "$($_)=$([Uri]::EscapeDataString($QueryParams[$_]))" 
+                    $Val = [Uri]::EscapeDataString($QueryParams[$_])
+                    # Relax encoding to match iBoss API expectations
+                    $Val = $Val -replace '%21', '!'
+                    $Val = $Val -replace '%40', '@'
+                    $Val = $Val -replace '%24', '$'
+                    $Val = $Val -replace '%2A', '*'
+                    $Val = $Val -replace '%28', '('
+                    $Val = $Val -replace '%29', ')'
+                    $Val = $Val -replace '%2C', ','
+                    $Val = $Val -replace '%3B', ';'
+                    $Val = $Val -replace '%3A', ':'
+                    "$($_)=$Val"
                 }) -join "&"
 
             $Uri = "/ibreports/web/log/url/entries?$QueryString"
