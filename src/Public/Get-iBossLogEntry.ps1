@@ -51,7 +51,9 @@ function Get-iBossLogEntry {
         Specifies the type of log entry to retrieve. 
         Valid values: 'All', 'Access', 'UserActivity', 'ConnectionError', 'Search', 'ZTNA', 'SDWAN', 'DNS', 'ConnectorRegistration', 'ZTNAPeerRegistration', 'SoftOverride', 'Audit'.
 
-        
+    .PARAMETER Locale
+        The locale to use for date formatting and localization. Default is 'en_US'.
+
     .EXAMPLE
         Get-iBossLogEntry -StartTime (Get-Date).AddMinutes(-30) -UserName "Jane.Doe1"
     #>
@@ -99,7 +101,10 @@ function Get-iBossLogEntry {
 
         [Parameter(Mandatory = $false)]
         [ValidateSet('All', 'Access', 'UserActivity', 'ConnectionError', 'Search', 'ZTNA', 'SDWAN', 'DNS', 'ConnectorRegistration', 'ZTNAPeerRegistration', 'SoftOverride', 'Audit')]
-        [string]$EventLogType = 'All'
+        [string]$EventLogType = 'All',
+
+        [Parameter(Mandatory = $false)]
+        [string]$Locale = 'en_US'
 
     )
 
@@ -224,7 +229,7 @@ function Get-iBossLogEntry {
             includeLogReports     = "true"
             isAdvancedSearch      = "true"
             isProxyError          = $TypeSettings['isProxyError']
-            locale                = "en_US"
+            locale                = $Locale
             localizeLogTime       = "true"
             logReductionType      = "0"
             maxItemsToReturn      = $Limit
