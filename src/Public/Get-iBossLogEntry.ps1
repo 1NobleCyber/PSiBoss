@@ -59,6 +59,9 @@ function Get-iBossLogEntry {
         [string]$DestinationIp,
 
         [Parameter(Mandatory = $false)]
+        [string]$DeviceName,
+
+        [Parameter(Mandatory = $false)]
         [int]$Limit = 100,
 
         [Parameter(Mandatory = $false)]
@@ -191,6 +194,10 @@ function Get-iBossLogEntry {
 
         if (-not [string]::IsNullOrWhiteSpace($DestinationIp)) {
             $BaseQueryParams['destinationIp'] = $DestinationIp
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($DeviceName)) {
+            $BaseQueryParams['machineName'] = $DeviceName
         }
 
         # 6. Execute Queries for Each Table
