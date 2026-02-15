@@ -21,6 +21,15 @@ function Get-iBossLogEntry {
     
     .PARAMETER SourceIp
         Filter logs by Source IP Address.
+
+    .PARAMETER DestinationIp
+        Filter logs by Destination IP Address.
+
+    .PARAMETER DeviceName
+        Filter logs by Device Name (machineName).
+
+    .PARAMETER Action
+        Filter logs by Action (e.g. Allowed, Blocked).
     
     .PARAMETER Limit
         The maximum number of items to return. Default is 100.
@@ -60,6 +69,10 @@ function Get-iBossLogEntry {
 
         [Parameter(Mandatory = $false)]
         [string]$DeviceName,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('All', 'Allowed', 'Blocked', 'RBIRedirect', 'SoftBlocked', 'ConnectRequest')]
+        [string]$Action = 'All',
 
         [Parameter(Mandatory = $false)]
         [int]$Limit = 100,
@@ -137,8 +150,20 @@ function Get-iBossLogEntry {
         }
 
         # 5. Build Base Query Parameters
+        
+        # Map Action Parameter
+        $ActionValue = switch ($Action) {
+            'All' { "" }
+            'Allowed' { "Allowed" }
+            'Blocked' { "Blocked" }
+            'RBIRedirect' { "RBI+Redirect" } 
+            'SoftBlocked' { "Soft-blocked" }
+            'ConnectRequest' { "Connect+Request" }
+            Default { "" }
+        }
+
         $BaseQueryParams = @{
-            action                = ""
+            action                = $ActionValue
             addTag                = "true"
             auditRecord           = $TypeSettings['auditRecord']
             callout               = $TypeSettings['callout']
@@ -220,8 +245,6 @@ function Get-iBossLogEntry {
             try {
                 $Result = Invoke-iBossRequest -Service Reporting -Uri $Uri -Verbose:$VerbosePreference
                 if ($Result) {
-                    # Some APIs return the array directly, others wrap it. 
-                    # Assuming array of entries based on previous logic.
                     $AllResults += $Result
                 }
             }
