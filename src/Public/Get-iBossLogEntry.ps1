@@ -33,6 +33,9 @@ function Get-iBossLogEntry {
 
     .PARAMETER GroupName
         Filter logs by Group Name. Spaces are automatically replaced with +.
+
+    .PARAMETER CategoryName
+        Filter logs by Web Category Name. Looks up the ID from the current session.
     
     .PARAMETER Limit
         The maximum number of items to return. Default is 100.
@@ -51,7 +54,7 @@ function Get-iBossLogEntry {
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [DateTime]$StartTime,
 
         [Parameter(Mandatory = $false)]
@@ -76,6 +79,9 @@ function Get-iBossLogEntry {
         [string]$GroupName,
 
         [Parameter(Mandatory = $false)]
+        [string]$CategoryName,
+
+        [Parameter(Mandatory = $false)]
         [ValidateSet('All', 'Allowed', 'Blocked', 'RBIRedirect', 'SoftBlocked', 'ConnectRequest')]
         [string]$Action = 'All',
 
@@ -97,8 +103,7 @@ function Get-iBossLogEntry {
             throw "Not connected. Please run Connect-iBoss first."
         }
 
-        # 2. Convert Dates to Epoch Milliseconds
-        $StartEpoch = [int64](($StartTime.ToUniversalTime() - [DateTime]::Parse("1970-01-01")).TotalMilliseconds)
+        # 2. Convert Dates to Epoch Milliseconds (Calculate EndEpoch first)
         $EndEpoch = [int64](($EndTime.ToUniversalTime() - [DateTime]::Parse("1970-01-01")).TotalMilliseconds)
 
         # 3. Get and Filter Tables
@@ -106,12 +111,40 @@ function Get-iBossLogEntry {
         
         # Determine LogFamily from LogType (e.g. url_log_entry -> url, ips_log -> ips)
         $LogFamily = $LogType.Split('_')[0]
-        if ($LogFamily -notin @('url', 'ips', 'el')) {
+        if ($LogFamily -notin @('url', 'ips')) {
             Write-Verbose "Could not determine standard LogFamily from '$LogType'. Defaulting to 'url'."
             $LogFamily = 'url'
         }
 
         $AllTables = Get-iBossLogTables -LogFamily $LogFamily
+
+        if ($PSBoundParameters.ContainsKey('StartTime')) {
+            $StartEpoch = [int64](($StartTime.ToUniversalTime() - [DateTime]::Parse("1970-01-01")).TotalMilliseconds)
+        }
+        else {
+            # Find the table that contains EndEpoch
+            # Tables typically have startDate and endDate (or null for current active table)
+            
+            $MatchingTable = $AllTables | Where-Object {
+                $TableLogType = $_.displayString -replace '_\d{8}$', ''
+                if ($TableLogType -ne $LogType) { return $false }
+
+                $TStart = $_.startDate
+                $TEnd = if ($_.endDate) { $_.endDate } else { [DateTimeOffset]::Now.ToUnixTimeMilliseconds() }
+                
+                # Check if EndEpoch falls within this table
+                return ($EndEpoch -ge $TStart) -and ($EndEpoch -le $TEnd)
+            } | Select-Object -First 1
+
+            if ($MatchingTable) {
+                Write-Verbose "StartTime not provided. Defaulting to start of table: $($MatchingTable.tableName)"
+                $StartEpoch = $MatchingTable.startDate
+            }
+            else {
+                Write-Warning "Could not find a log table covering the EndTime. Defaulting StartTime to 1 hour before EndTime."
+                $StartEpoch = $EndEpoch - 3600000
+            }
+        }
 
         # Filter tables that match the LogType and overlap with the time range
         $TargetTables = $AllTables | Where-Object {
@@ -235,6 +268,23 @@ function Get-iBossLogEntry {
             $BaseQueryParams['groupName'] = $GroupName -replace ' ', '+'
         }
 
+        if (-not [string]::IsNullOrWhiteSpace($CategoryName)) {
+            if ($Global:iBossSession.WebCategories) {
+                # Lookup the category ID
+                $CatObj = $Global:iBossSession.WebCategories | Where-Object { $_.defaultText -eq $CategoryName } | Select-Object -First 1
+                
+                if ($CatObj) {
+                    $BaseQueryParams['categoryId'] = $CatObj.id
+                }
+                else {
+                    Write-Warning "Category '$CategoryName' not found in session cache."
+                }
+            }
+            else {
+                Write-Warning "WebCategories not loaded in session. Cannot lookup CategoryName '$CategoryName'."
+            }
+        }
+        
         # 6. Execute Queries for Each Table
         $AllResults = @()
 
