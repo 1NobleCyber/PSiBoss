@@ -135,18 +135,18 @@ function Get-iBossLogEntry {
 
         # 4. Map EventLogType to Query Parameters
         $TypeSettings = switch ($EventLogType) {
-            'All' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
-            'Access' { @{ statusRecordType = '0'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
-            'UserActivity' { @{ statusRecordType = '1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
-            'ConnectionError' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '1'; callout = '-1'; statusRecord = '-1' } }
-            'Search' { @{ statusRecordType = '2'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
-            'ZTNA' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '2' } }
-            'SDWAN' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '1'; statusRecord = '-1' } }
-            'DNS' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '2'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
-            'ConnectorRegistration' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '3'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
-            'ZTNAPeerRegistration' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '4'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
-            'SoftOverride' { @{ statusRecordType = '3'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
-            'Audit' { @{ statusRecordType = '-1'; auditRecord = '0'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } }
+            'All' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #ALL
+            'Access' { @{ statusRecordType = '0'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #ACCESS
+            'UserActivity' { @{ statusRecordType = '1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #USERACTIVITY
+            'ConnectionError' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '1'; callout = '-1'; statusRecord = '-1' } } #CONNECTIONERROR
+            'Search' { @{ statusRecordType = '2'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #SEARCH
+            'ZTNA' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '2' } }  #ZTNA
+            'SDWAN' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '1'; statusRecord = '-1' } } #SDWAN
+            'DNS' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '2'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #DNS
+            'ConnectorRegistration' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '3'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #CONNECTORREGISTRATION
+            'ZTNAPeerRegistration' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '4'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #ZTNAPeerRegistration
+            'SoftOverride' { @{ statusRecordType = '3'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #SOFTOVERRIDE
+            'Audit' { @{ statusRecordType = '-1'; auditRecord = '0'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #AUDIT
         }
 
         # 5. Build Base Query Parameters
