@@ -36,6 +36,9 @@ function Get-iBossLogEntry {
 
     .PARAMETER CategoryName
         Filter logs by Web Category Name. Looks up the ID from the current session.
+
+    .PARAMETER Ascending
+        Sort results in ascending order. Default is Descending ($false).
     
     .PARAMETER Limit
         The maximum number of items to return. Default is 100.
@@ -84,6 +87,9 @@ function Get-iBossLogEntry {
         [Parameter(Mandatory = $false)]
         [ValidateSet('All', 'Allowed', 'Blocked', 'RBIRedirect', 'SoftBlocked', 'ConnectRequest')]
         [string]$Action = 'All',
+
+        [Parameter(Mandatory = $false)]
+        [switch]$Ascending,
 
         [Parameter(Mandatory = $false)]
         [int]$Limit = 100,
@@ -224,7 +230,7 @@ function Get-iBossLogEntry {
             maxItemsToReturn      = $Limit
             mitm                  = "-1"
             noiseFilter           = $TypeSettings['noiseFilter']
-            orderAscending        = "false"
+            orderAscending        = if ($Ascending) { "true" } else { "false" }
             priority              = "-1"
             proxyErrorWildcard    = "true"
             reportingGroup        = "-1"
