@@ -139,7 +139,7 @@ function Get-iBossLogEntry {
             $LogFamily = 'url'
         }
 
-        $AllTables = Get-iBossLogTables -LogFamily $LogFamily
+        $AllTables = Get-iBossLogTable -LogFamily $LogFamily
 
         if ($PSBoundParameters.ContainsKey('StartTime')) {
             $StartEpoch = [int64](($StartTime.ToUniversalTime() - [DateTime]::Parse("1970-01-01")).TotalMilliseconds)
