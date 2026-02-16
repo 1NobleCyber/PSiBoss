@@ -1,4 +1,4 @@
-function Get-ibossGroups {
+function Get-iBossGroup {
     <#
     .SYNOPSIS
         Retrieves a list of iBoss Groups.
@@ -21,10 +21,10 @@ function Get-ibossGroups {
         Default Group ID parameter. Default is -1.
 
     .EXAMPLE
-        Get-ibossGroups
+        Get-iBossGroup
         
     .EXAMPLE
-        Get-ibossGroups -SearchFilter "CIPA"
+        Get-iBossGroup -SearchFilter "CIPA"
     #>
     [CmdletBinding()]
     param(
