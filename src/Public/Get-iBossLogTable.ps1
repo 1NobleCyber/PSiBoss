@@ -1,4 +1,4 @@
-function Get-iBossLogTables {
+function Get-iBossLogTable {
     <#
     .SYNOPSIS
         Retrieves the list of available log tables (archives) from the iBoss Reporting Service.
@@ -9,7 +9,7 @@ function Get-iBossLogTables {
         Endpoint: /ibreports/web/log/ips/archives
 
     .EXAMPLE
-        Get-iBossLogTables
+        Get-iBossLogTable
     #>
     [CmdletBinding()]
     param(
