@@ -161,7 +161,7 @@ function Get-iBossLogEntry {
 
             if ($MatchingTable) {
                 Write-Verbose "StartTime not provided. Defaulting to start of table: $($MatchingTable.tableName)"
-                $StartEpoch = $($MatchingTable.startDate) + 1
+                $StartEpoch = $MatchingTable.startDate
             }
             else {
                 Write-Warning "Could not find a log table covering the EndTime. Defaulting StartTime to 1 hour before EndTime."
@@ -181,8 +181,8 @@ function Get-iBossLogEntry {
             $TableEnd = if ($_.endDate) { $_.endDate } else { [DateTimeOffset]::Now.ToUnixTimeMilliseconds() }
             $TableStart = $_.startDate
 
-            # Overlap: (StartA <= EndB) and (EndA >= StartB)
-            $TimeMatch = ($StartEpoch -le $TableEnd) -and ($EndEpoch -ge $TableStart)
+            # Overlap: (StartA <= EndB) and (EndA > StartB)
+            $TimeMatch = ($StartEpoch -le $TableEnd) -and ($EndEpoch -gt $TableStart)
 
             $TypeMatch -and $TimeMatch
         }
