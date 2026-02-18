@@ -13,8 +13,8 @@ function Get-iBossLogEntry {
     .PARAMETER EndTime
         The end time for the query. Defaults to the current time.
     
-    .PARAMETER Filter
-        A general filter string.
+    .PARAMETER UrlFilter
+        Filter logs by a portion of the URL
     
     .PARAMETER UserName
         Filter logs by a specific username.
@@ -72,7 +72,7 @@ function Get-iBossLogEntry {
         [DateTime]$EndTime = (Get-Date),
 
         [Parameter(Mandatory = $false)]
-        [string]$Filter,
+        [string]$UrlFilter,
 
         [Parameter(Mandatory = $false)]
         [string]$UserName,
@@ -266,8 +266,8 @@ function Get-iBossLogEntry {
         }
 
         # Apply Optional Filters
-        if (-not [string]::IsNullOrWhiteSpace($Filter)) {
-            $BaseQueryParams['urlFilter'] = $Filter
+        if (-not [string]::IsNullOrWhiteSpace($UrlFilter)) {
+            $BaseQueryParams['urlFilter'] = $UrlFilter
         }
         
         if (-not [string]::IsNullOrWhiteSpace($UserName)) {
