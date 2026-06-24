@@ -45,13 +45,13 @@ Connect-iBoss -Credential $cred -TOTP "123456"
 ### Retrieve Current Assets
 ```powershell
 # Get a list of the latest 10 assets
-Get-iBossAsset -Count 10
+Get-iBossAsset -Limit 10
 ```
 
 ### Manage Allow/Block Lists
 ```powershell
 # Add a domain to the block list
-Add-iBossBlockList -Domain "malicious-site.com"
+Add-iBossBlockList -URL "malicious-site.com"
 
 # View the current block list
 Get-iBossBlockList
