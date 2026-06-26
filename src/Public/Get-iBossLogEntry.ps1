@@ -347,6 +347,15 @@ function Get-iBossLogEntry {
             try {
                 $Result = Invoke-iBossRequest -Service Reporting -Uri $Uri -Verbose:$VerbosePreference
                 if ($Result) {
+                    foreach ($Item in $Result) {
+                        if ($null -ne $Item.logTime) {
+                            try {
+                                $Item | Add-Member -MemberType NoteProperty -Name 'parsedLogTime' -Value ([datetimeOffset]::FromUnixTimeMilliseconds([long]$Item.logTime).LocalDateTime) -Force
+                            } catch {
+                                Write-Verbose "Failed to convert logTime '$($Item.logTime)' to DateTime."
+                            }
+                        }
+                    }
                     $AllResults += $Result
                 }
             }
