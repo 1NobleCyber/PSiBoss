@@ -38,6 +38,9 @@ Connect-iBoss -Credential $cred
 
 # Connect to iBoss (With MFA / TOTP)
 Connect-iBoss -Credential $cred -TOTP "123456"
+
+# Connect to iBoss (With API Token)
+Connect-iBoss -ApiToken "your-api-token" -ApiUsername "your-api-username"
 ```
 
 ## Usage Examples

@@ -3,94 +3,123 @@ function Connect-iBoss {
     .SYNOPSIS
         Connects to the iBoss Cloud Gateway and captures Session/XSRF tokens.
     #>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'BasicAuth')]
     param(
-        [Parameter(Mandatory = $true, Position = 0)]
+        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'BasicAuth')]
         [PSCredential]$Credential,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory = $true, ParameterSetName = 'ApiToken')]
+        [string]$ApiToken,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'ApiToken')]
+        [string]$ApiUsername,
+
+        [Parameter(Mandatory = $false, ParameterSetName = 'BasicAuth')]
         [string]$TOTP,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory = $false, ParameterSetName = 'BasicAuth')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'ApiToken')]
         [switch]$NoWelcome
 
     )
 
     process {
-        # --- STEP 1: LOGIN (Get Token & Cookies) ---
-        $LoginUri = "/ibossauth/web/tokens?ignoreAuthModule=true"
-        if (![string]::IsNullOrWhiteSpace($TOTP)) {
-            $LoginUri += "&totpCode=$TOTP"
-        }
-        
-        $FullLoginUrl = "https://accounts.iboss.com$LoginUri"
+        if ($PSCmdlet.ParameterSetName -eq 'ApiToken') {
+            $FormattedToken = "Bearer $ApiToken"
+            $CookieString = ""
+            $XsrfToken = $null
 
-        # Generate Basic Auth (ISO-8859-1)
-        $PlainAuth = "$($Credential.UserName):$($Credential.GetNetworkCredential().Password)"
-        $Bytes = [System.Text.Encoding]::GetEncoding("ISO-8859-1").GetBytes($PlainAuth)
-        $BasicAuth = [Convert]::ToBase64String($Bytes)
-
-        if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
-            Write-Verbose "--- [STEP 1: LOGIN] ---"
-            Write-Verbose "GET $FullLoginUrl"
-        }
-
-        try {
-            $WebResponse = Invoke-WebRequest -Uri $FullLoginUrl `
-                -Method GET `
-                -Headers @{ 
-                "Authorization" = "Basic $BasicAuth"
-                "User-Agent"    = "ibossAPI"
-                "Accept"        = "application/json"
-            } `
-                -SkipHttpErrorCheck `
-                -ErrorAction Stop
-        }
-        catch {
-            throw "Network Connection Failed: $($_.Exception.Message)"
-        }
-
-        # --- ERROR HANDLING & MFA CHECK ---
-        if ($WebResponse.StatusCode -ge 400) {
-            Write-Warning "Login Failed with Status Code: $($WebResponse.StatusCode)"
-            if ($WebResponse.Content -match "MULTIFACTOR_CREDENTIALS_REQUIRED") {
-                throw "Login Failed: Multi-Factor Authentication is required. Please run Connect-iBoss with -TOTP."
+            # Initialize Session
+            $Global:iBossSession = @{
+                AuthToken   = $FormattedToken
+                Cookies     = $CookieString
+                XsrfToken   = $XsrfToken
+                Domains     = @{}
+                Context     = @{}
+                ApiUsername = $ApiUsername
             }
-            if ($WebResponse.Content) { throw "iBoss returned error: $($WebResponse.Content)" }
-            throw "Login failed (Status $($WebResponse.StatusCode))"
+
+            if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
+                Write-Verbose "--- [STEP 1: LOGIN] ---"
+                Write-Verbose "Skipped credential login. Using provided API Bearer token."
+            }
         }
-
-        # --- PARSE TOKEN ---
-        $TokenObj = $WebResponse.Content | ConvertFrom-Json
-        $RawToken = if ($TokenObj.token) { $TokenObj.token } else { $TokenObj }
-        $FormattedToken = "Token $RawToken"
-
-        # --- PARSE COOKIES ---
-        $CookieString = ""
-        $XsrfToken = $null
-        
-        if ($WebResponse.Headers['Set-Cookie']) {
-            $CookieArray = $WebResponse.Headers['Set-Cookie']
-            if ($CookieArray -is [string]) { $CookieArray = @($CookieArray) }
+        else {
+            # --- STEP 1: LOGIN (Get Token & Cookies) ---
+            $LoginUri = "/ibossauth/web/tokens?ignoreAuthModule=true"
+            if (![string]::IsNullOrWhiteSpace($TOTP)) {
+                $LoginUri += "&totpCode=$TOTP"
+            }
             
-            $CookieString = ($CookieArray -join ';')
-            foreach ($Cookie in $CookieArray) {
-                if ($Cookie -match 'XSRF-TOKEN=([^;]+)') {
-                    $XsrfToken = $matches[1]
+            $FullLoginUrl = "https://accounts.iboss.com$LoginUri"
+
+            # Generate Basic Auth (ISO-8859-1)
+            $PlainAuth = "$($Credential.UserName):$($Credential.GetNetworkCredential().Password)"
+            $Bytes = [System.Text.Encoding]::GetEncoding("ISO-8859-1").GetBytes($PlainAuth)
+            $BasicAuth = [Convert]::ToBase64String($Bytes)
+
+            if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
+                Write-Verbose "--- [STEP 1: LOGIN] ---"
+                Write-Verbose "GET $FullLoginUrl"
+            }
+
+            try {
+                $WebResponse = Invoke-WebRequest -Uri $FullLoginUrl `
+                    -Method GET `
+                    -Headers @{ 
+                    "Authorization" = "Basic $BasicAuth"
+                    "User-Agent"    = "ibossAPI"
+                    "Accept"        = "application/json"
+                } `
+                    -SkipHttpErrorCheck `
+                    -ErrorAction Stop
+            }
+            catch {
+                throw "Network Connection Failed: $($_.Exception.Message)"
+            }
+
+            # --- ERROR HANDLING & MFA CHECK ---
+            if ($WebResponse.StatusCode -ge 400) {
+                Write-Warning "Login Failed with Status Code: $($WebResponse.StatusCode)"
+                if ($WebResponse.Content -match "MULTIFACTOR_CREDENTIALS_REQUIRED") {
+                    throw "Login Failed: Multi-Factor Authentication is required. Please run Connect-iBoss with -TOTP."
+                }
+                if ($WebResponse.Content) { throw "iBoss returned error: $($WebResponse.Content)" }
+                throw "Login failed (Status $($WebResponse.StatusCode))"
+            }
+
+            # --- PARSE TOKEN ---
+            $TokenObj = $WebResponse.Content | ConvertFrom-Json
+            $RawToken = if ($TokenObj.token) { $TokenObj.token } else { $TokenObj }
+            $FormattedToken = "Token $RawToken"
+
+            # --- PARSE COOKIES ---
+            $CookieString = ""
+            $XsrfToken = $null
+            
+            if ($WebResponse.Headers['Set-Cookie']) {
+                $CookieArray = $WebResponse.Headers['Set-Cookie']
+                if ($CookieArray -is [string]) { $CookieArray = @($CookieArray) }
+                
+                $CookieString = ($CookieArray -join ';')
+                foreach ($Cookie in $CookieArray) {
+                    if ($Cookie -match 'XSRF-TOKEN=([^;]+)') {
+                        $XsrfToken = $matches[1]
+                    }
                 }
             }
-        }
 
-        # Initialize Session
-        $Global:iBossSession = @{
-            AuthToken = $FormattedToken
-            Cookies   = $CookieString
-            XsrfToken = $XsrfToken
-            Domains   = @{}
-            Context   = @{}
-        }
+            # Initialize Session
+            $Global:iBossSession = @{
+                AuthToken = $FormattedToken
+                Cookies   = $CookieString
+                XsrfToken = $XsrfToken
+                Domains   = @{}
+                Context   = @{}
+            }
 
-        Write-Verbose "Auth Token and Cookies acquired."
+            Write-Verbose "Auth Token and Cookies acquired."
+        }
 
         # --- STEP 2: GET ACCOUNT CONTEXT ---
         Write-Verbose "Step 2: Retrieving Account Context..."
