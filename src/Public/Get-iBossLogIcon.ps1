@@ -32,7 +32,7 @@ function Get-iBossLogIcon {
             throw "Not connected. Please run Connect-iBoss first."
         }
 
-        # 1. Construct Request
+        # Construct Request
         $Url = "$($Global:iBossSession.Domains['Reporting'])/ibreports/web/lookup/domain/logo?domain=$Domain"
         
         $Headers = @{
@@ -64,7 +64,7 @@ function Get-iBossLogIcon {
             return
         }
 
-        # 2. Determine File Type (Magic Bytes)
+        # Determine File Type (Magic Bytes)
         $HexHead = ($Bytes[0..7] | ForEach-Object { $_.ToString("X2") }) -join ""
         $FileType = "Unknown"
         
@@ -73,11 +73,10 @@ function Get-iBossLogIcon {
         elseif ($HexHead -match "^3C3F786D") { $FileType = "SVG" } 
         elseif ($HexHead -match "^3C737667") { $FileType = "SVG" } 
 
-        # 3. Hash Calculation
-        # SHA256
+        # Hash Calculation SHA256
         $SHA256 = [BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash($Bytes)) -replace "-"
 
-        # 4. Dimensions Parsing (Lightweight)
+        # Dimensions Parsing
         $Dimensions = "Unknown"
         try {
             if ($FileType -eq "PNG") {
@@ -107,7 +106,7 @@ function Get-iBossLogIcon {
             Write-Verbose "Failed to parse dimensions: $_"
         }
 
-        # 5. Output Object
+        # Output Object
         $Result = [PSCustomObject]@{
             Domain     = $Domain
             Size       = $Bytes.Length
