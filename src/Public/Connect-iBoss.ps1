@@ -45,7 +45,7 @@ function Connect-iBoss {
             }
         }
         else {
-            # --- STEP 1: LOGIN (Get Token & Cookies) ---
+            # Get Token & Cookies
             $LoginUri = "/ibossauth/web/tokens?ignoreAuthModule=true"
             if (![string]::IsNullOrWhiteSpace($TOTP)) {
                 $LoginUri += "&totpCode=$TOTP"
@@ -53,7 +53,7 @@ function Connect-iBoss {
             
             $FullLoginUrl = "https://accounts.iboss.com$LoginUri"
 
-            # Generate Basic Auth (ISO-8859-1)
+            # Basic Auth
             $PlainAuth = "$($Credential.UserName):$($Credential.GetNetworkCredential().Password)"
             $Bytes = [System.Text.Encoding]::GetEncoding("ISO-8859-1").GetBytes($PlainAuth)
             $BasicAuth = [Convert]::ToBase64String($Bytes)
@@ -78,7 +78,7 @@ function Connect-iBoss {
                 throw "Network Connection Failed: $($_.Exception.Message)"
             }
 
-            # --- ERROR HANDLING & MFA CHECK ---
+            # MFA Check
             if ($WebResponse.StatusCode -ge 400) {
                 Write-Warning "Login Failed with Status Code: $($WebResponse.StatusCode)"
                 if ($WebResponse.Content -match "MULTIFACTOR_CREDENTIALS_REQUIRED") {
@@ -88,12 +88,12 @@ function Connect-iBoss {
                 throw "Login failed (Status $($WebResponse.StatusCode))"
             }
 
-            # --- PARSE TOKEN ---
+            # Parse Token
             $TokenObj = $WebResponse.Content | ConvertFrom-Json
             $RawToken = if ($TokenObj.token) { $TokenObj.token } else { $TokenObj }
             $FormattedToken = "Token $RawToken"
 
-            # --- PARSE COOKIES ---
+            # Parse Cookies
             $CookieString = ""
             $XsrfToken = $null
             
@@ -121,7 +121,7 @@ function Connect-iBoss {
             Write-Verbose "Auth Token and Cookies acquired."
         }
 
-        # --- STEP 2: GET ACCOUNT CONTEXT ---
+        # Get Account info
         Write-Verbose "Step 2: Retrieving Account Context..."
         try {
             $MySettings = Invoke-iBossRequest -Service Core -Uri "/ibcloud/web/users/mySettings" -Verbose:$VerbosePreference -ErrorAction Stop
@@ -135,7 +135,7 @@ function Connect-iBoss {
         $AccId = $MySettings.accountSettingsId
         if (-not $AccId) { $AccId = $MySettings.id }
 
-        # --- STEP 3: GET CLOUD NODES (Updated Logic) ---
+        # Get Cloud Nodes
         Write-Verbose "Step 3: Discovering Primary Gateway via Cloud Nodes..."
         
         try {
@@ -145,7 +145,7 @@ function Connect-iBoss {
             throw "Failed at Step 3 (Get Cloud Nodes). Error: $_"
         }
 
-        # Save CloudNodes to Session for reference
+        # Save Cloud Nodes to Session
         $Global:iBossSession.CloudNodes = $CloudNodes
 
         # Filter: Find the object where "primaryNode" equals 1
@@ -171,10 +171,10 @@ function Connect-iBoss {
         $Global:iBossSession.Domains['Gateway'] = "https://$GatewayDns"
         $Global:iBossSession.GatewayVersion = $GatewayVersion
 
-        # --- DETECT REPORTING NODE ---
+        # Find Reporting Node
         $ReportingNodeObj = $null
         
-        # 1. Check for explicit Reporting Node in CloudNodes
+        # Check for explicit Reporting Node in CloudNodes
         $ReportingNodeObj = $NodesArray | Where-Object { 
             ($_.productFamily -eq 'reports') -or ($_.description -eq 'Reporter') 
         } | Select-Object -First 1
@@ -185,13 +185,13 @@ function Connect-iBoss {
             $Global:iBossSession.Domains['Reporting'] = "https://$ReportingDns"
         }
         else {
-            # 2. Fallback: Use Primary Gateway if no dedicated reporter found
+            # Fallback - Should not happen
             Write-Verbose "No dedicated Reporting Node found. Using Primary Gateway for reporting."
             $Global:iBossSession.Domains['Reporting'] = "https://$GatewayDns"
         }
 
 
-        # --- STEP 4: FETCH WEB CATEGORIES ---
+        # Get Web Categories
         if ($SwgUrl) {
             if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
                 Write-Verbose "Step 4: Fetching Web Categories from $SwgUrl..."
@@ -199,7 +199,7 @@ function Connect-iBoss {
             
             $CatUri = "${SwgUrl}common/lookup/mainWebCategories.json?tcm=$GatewayVersion"
             
-            # Reconstruct headers for this request
+            # Build headers for this request
             $CatHeaders = @{
                 "Authorization" = $FormattedToken
                 "User-Agent"    = "ibossAPI"
