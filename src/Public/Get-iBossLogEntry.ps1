@@ -121,15 +121,15 @@ function Get-iBossLogEntry {
     )
 
     process {
-        # 1. Validation
+        # Validate session
         if (-not $Global:iBossSession) {
             throw "Not connected. Please run Connect-iBoss first."
         }
 
-        # 2. Convert Dates to Epoch Milliseconds (Calculate EndEpoch first)
+        # Convert Dates to Epoch Milliseconds
         $EndEpoch = [int64](($EndTime.ToUniversalTime() - [DateTime]::Parse("1970-01-01")).TotalMilliseconds)
 
-        # 3. Get and Filter Tables
+        # Get and Filter Tables
         Write-Verbose "Retrieving available log tables..."
         
         # Determine LogFamily from LogType (e.g. url_log_entry -> url, ips_log -> ips)
@@ -173,10 +173,10 @@ function Get-iBossLogEntry {
         $TargetTables = $AllTables | Where-Object {
             $TableLogType = $_.displayString -replace '_\d{8}$', '' # Remove date suffix to get type
             
-            # 1. Match Log Type (exact match of prefix)
+            # Match Log Type (exact match of prefix)
             $TypeMatch = $TableLogType -eq $LogType
 
-            # 2. Check Time Overlap
+            # Check Time Overlap
             # Table End Time (if null, use current time)
             $TableEnd = if ($_.endDate) { $_.endDate } else { [DateTimeOffset]::Now.ToUnixTimeMilliseconds() }
             $TableStart = $_.startDate
@@ -194,7 +194,7 @@ function Get-iBossLogEntry {
 
         Write-Verbose "Found $($TargetTables.Count) matching table(s): $($TargetTables.tableName -join ', ')"
 
-        # 4. Map EventLogType to Query Parameters
+        # Map EventLogType to Query Parameters
         $TypeSettings = switch ($EventLogType) {
             'All' { @{ statusRecordType = '-1'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #ALL
             'Access' { @{ statusRecordType = '0'; auditRecord = '-1'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #ACCESS
@@ -210,7 +210,7 @@ function Get-iBossLogEntry {
             'Audit' { @{ statusRecordType = '-1'; auditRecord = '0'; noiseFilter = '-1'; isProxyError = '-1'; callout = '-1'; statusRecord = '-1' } } #AUDIT
         }
 
-        # 5. Build Base Query Parameters
+        # Build Base Query Parameters
         
         # Map Action Parameter
         $ActionValue = switch ($Action) {
@@ -316,7 +316,7 @@ function Get-iBossLogEntry {
             }
         }
         
-        # 6. Execute Queries for Each Table
+        # Execute Queries for Each Table
         $AllResults = @()
 
         foreach ($Table in $TargetTables) {
