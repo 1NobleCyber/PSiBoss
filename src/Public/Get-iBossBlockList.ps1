@@ -52,7 +52,7 @@ function Get-iBossBlockList {
     process {
         $BaseUri = "/json/controls/blockList?currentPolicyBeingEdited=$PolicyId&domainFilter=$([uri]::EscapeDataString($DomainFilter))"
         
-        # --- Logic for -All Switch ---
+        # Logic for -All Switch
         if ($All) {
             Write-Verbose "Mode: ALL. Querying metadata to determine total count..."
             
@@ -81,7 +81,7 @@ function Get-iBossBlockList {
             $ReqMax = $MaxItems
         }
 
-        # --- Execute Final Query ---
+        # Execute
         $FinalUri = "$BaseUri&currentRow=$ReqRow&maxItems=$ReqMax"
         
         if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
