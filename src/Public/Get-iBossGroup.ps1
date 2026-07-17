@@ -46,13 +46,13 @@ function Get-iBossGroup {
             throw "Not connected. Please run Connect-iBoss first."
         }
 
-        # 1. Construct URL
+        # Construct URL
         $Uri = "/ibreports/web/log/group"
         if (-not [string]::IsNullOrWhiteSpace($SearchFilter)) {
             $Uri += "/$([Uri]::EscapeDataString($SearchFilter))"
         }
 
-        # 2. Construct Query Parameters
+        # Construct Query Parameters
         $QueryParams = @{
             maximumItemsToReturn = $MaximumItemsToReturn
             currentRowNumber     = $CurrentRowNumber
@@ -62,7 +62,7 @@ function Get-iBossGroup {
         $QueryString = ($QueryParams.Keys | ForEach-Object { "$($_)=$($QueryParams[$_])" }) -join "&"
         $Uri += "?$QueryString"
 
-        # 3. Invoke Request
+        # Invoke Request
         try {
             $Result = Invoke-iBossRequest -Service Reporting -Uri $Uri -Verbose:$VerbosePreference
             
