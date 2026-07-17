@@ -75,7 +75,7 @@ function Get-iBossAsset {
         
         $OrderAscending = if ($Ascending) { "true" } else { "false" }
 
-        # --- Pagination Setup ---
+        # Pagination Setup
         $MaxBatchSize = 1000
         $TotalRetrieved = 0
         $CurrentRow = $CurrentRowNumber
@@ -167,7 +167,7 @@ function Get-iBossAsset {
                             }
                         }
                         
-                        # --- Output Streaming ---
+                        # Output Streaming
                         Write-Output $Item
                     }
                     
@@ -181,7 +181,7 @@ function Get-iBossAsset {
                     }
                 }
                 else {
-                    # No results, break loop
+                    # No results
                     break
                 }
             }
