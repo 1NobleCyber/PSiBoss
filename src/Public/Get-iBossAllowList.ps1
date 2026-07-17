@@ -52,7 +52,7 @@ function Get-iBossAllowList {
     process {
         $BaseUri = "/json/controls/allowList?currentPolicyBeingEdited=$PolicyId&domainFilter=$([uri]::EscapeDataString($DomainFilter))"
         
-        # --- Logic for -All Switch ---
+        # Logic for -All Switch
         if ($All) {
             Write-Verbose "Mode: ALL. Querying metadata to determine total count..."
             
@@ -81,7 +81,7 @@ function Get-iBossAllowList {
             $ReqMax = $MaxItems
         }
 
-        # --- Execute Final Query ---
+        # Execute
         $FinalUri = "$BaseUri&currentRow=$ReqRow&maxItems=$ReqMax"
         
         if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
