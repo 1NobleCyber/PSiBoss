@@ -26,7 +26,7 @@ function Submit-iBossUrlRecategorization {
     )
 
     process {
-        # 1. Lookup Current Categories
+        # Lookup Current Categories
         
         if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
             Write-Verbose "Step 1: Looking up current categories for $Url..."
@@ -44,14 +44,14 @@ function Submit-iBossUrlRecategorization {
             throw "Could not retrieve 'categories' bitmask for $Url. Recategorization requires this data." 
         }
 
-        # 2. Convert Bitmask String to Integer Array
+        # Convert Bitmask String to Integer Array
         $CatArray = $CatString.ToCharArray() | ForEach-Object { [int][string]$_ }
         
         if ($PSCmdlet.SessionState.PSVariable.GetValue('VerbosePreference') -ne 'SilentlyContinue') {
             Write-Verbose "Step 2: Converted bitmask (Length: $($CatArray.Count)) to array."
         }
 
-        # 3. Submit Recategorization
+        # Submit Recategorization
         $SubmitPayload = @{
             url        = $Url
             categories = $CatArray
